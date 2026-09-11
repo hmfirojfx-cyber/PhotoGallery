@@ -52,5 +52,5 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // Glide for image loading
-    implementation("github.com.bumptech.glide:glide:4.15.1")
+    implementation(""com.github.bumptech.glide:glide:4.15.1")
 }
