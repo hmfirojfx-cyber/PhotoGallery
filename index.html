@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Photo Gallery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <nav class="bg-indigo-700 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold">Admin Web Dashboard</h1>
+        <button onclick="logout()" class="bg-red-600 px-4 py-2 rounded text-sm hover:bg-red-700">Logout</button>
+    </nav>
+
+    <div class="container mx-auto p-6 max-w-5xl">
+        
+        <!-- Manage Categories Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">Manage Categories</h2>
+            <div class="flex gap-4 mb-4">
+                <input type="text" id="categoryName" placeholder="New Category Name" class="p-3 border rounded flex-1">
+                <button onclick="addCategory()" class="bg-green-600 text-white px-6 py-2.5 rounded hover:bg-green-700">Add Category</button>
+            </div>
+            <div id="categoryList" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Add Photo Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">Add New Photo</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" id="title" placeholder="Title" class="p-3 border rounded">
+                <input type="text" id="imageUrl" placeholder="Image Direct URL" class="p-3 border rounded">
+                <input type="text" id="category" placeholder="Category Name" class="p-3 border rounded">
+                <input type="text" id="description" placeholder="Description" class="p-3 border rounded">
+            </div>
+            <div class="mt-4 flex items-center">
+                <input type="checkbox" id="isPublished" checked class="w-4 h-4 mr-2">
+                <label for="isPublished" class="text-sm text-gray-700">Publish immediately</label>
+            </div>
+            <button onclick="addPhoto()" class="mt-4 bg-indigo-600 text-white px-6 py-2.5 rounded hover:bg-indigo-700">Upload Photo</button>
+        </div>
+
+        <!-- Photo List Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">Photo List</h2>
+            <div id="photoGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // ✅ আপনার নিজস্ব Firebase configuration বসানো হয়েছে
+        const firebaseConfig = {
+          apiKey: "AIzaSyCUuVhBxQT1Fizy7vOe3rsxrEx_G-9h1fQ",
+          authDomain: "firoj-01.firebaseapp.com",
+          projectId: "firoj-01",
+          storageBucket: "firoj-01.firebasestorage.app",
+          messagingSenderId: "12762101767",
+          appId: "1:12762101767:web:7dd89299bb0f449d93d2a2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        onAuthStateChanged(auth, (user) => { 
+            if (!user) window.location.href = "login.html"; 
+            else { loadPhotos(); loadCategories(); } 
+        });
+
+        // Category Management Functions
+        window.addCategory = async function() {
+            const name = document.getElementById('categoryName').value.trim();
+            if(!name) return alert("Enter category name");
+            await addDoc(collection(db, "categories"), { name, createdAt: Date.now() });
+            document.getElementById('categoryName').value = "";
+            loadCategories();
+        }
+
+        async function loadCategories() {
+            const list = document.getElementById('categoryList');
+            const snap = await getDocs(collection(db, "categories"));
+            list.innerHTML = "";
+            snap.forEach(d => {
+                const cat = d.data();
+                list.innerHTML += `<span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm flex items-center gap-2">${cat.name} <button onclick="deleteCategory('${d.id}')" class="text-red-500 font-bold">&times;</button></span>`;
+            });
+        }
+
+        window.deleteCategory = async function(id) {
+            if(confirm("Delete category?")) { await deleteDoc(doc(db, "categories", id)); loadCategories(); }
+        }
+
+        // Photo Management Functions
+        window.addPhoto = async function() {
+            const title = document.getElementById('title').value;
+            const imageUrl = document.getElementById('imageUrl').value;
+            const category = document.getElementById('category').value;
+            const description = document.getElementById('description').value;
+            const isPublished = document.getElementById('isPublished').checked;
+            if(!title || !imageUrl) return alert("Fill required fields");
+            await addDoc(collection(db, "photos"), { title, imageUrl, category, description, isPublished, createdAt: Date.now() });
+            alert("Added successfully!"); location.reload();
+        }
+
+        async function loadPhotos() {
+            const grid = document.getElementById('photoGrid');
+            const snap = await getDocs(collection(db, "photos"));
+            grid.innerHTML = "";
+            snap.forEach(d => {
+                const p = d.data();
+                grid.innerHTML += `<div class="border p-3 rounded"><img src="${p.imageUrl}" class="h-32 w-full object-cover rounded mb-2"><h4 class="font-bold">${p.title}</h4><p class="text-xs text-gray-500">${p.category}</p><button onclick="deletePhoto('${d.id}')" class="mt-2 bg-red-500 text-white text-xs px-3 py-1 rounded">Delete</button></div>`;
+            });
+        }
+
+        window.deletePhoto = async function(id) {
+            if(confirm("Delete photo?")) { await deleteDoc(doc(db, "photos", id)); loadPhotos(); }
+        }
+
+        window.logout = () => signOut(auth).then(() => window.location.href = "login.html");
+    </script>
+</body>
+</html>
